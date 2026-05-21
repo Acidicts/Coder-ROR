@@ -1,0 +1,89 @@
+name: Build & Push Ruby Rails Base Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      # Only rebuild when the Dockerfile itself changes
+      - "Dockerfile"
+  schedule:
+    # Rebuild weekly (Mondays at 02:00 UTC) to pick up upstream security patches
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+    # Allow manual trigger from the Actions tab at any time
+
+env:
+  REGISTRY: ghcr.io
+  # This will resolve to e.g. ghcr.io/your-org/ruby-rails-base
+  IMAGE_NAME: ${{ github.repository_owner }}/ruby-rails-base
+
+jobs:
+  build-and-push:
+    name: Build and push image
+    runs-on: ubuntu-latest
+
+    # Required for ghcr.io push and attestation
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # Tag every main-branch push as :latest
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Also tag with the short commit SHA for pinning (e.g. :sha-a1b2c3d)
+            type=sha,prefix=sha-,format=short
+            # Tag with YYYY-MM-DD for date-based pinning (e.g. :2025-06-01)
+            type=schedule,pattern={{date 'YYYY-MM-DD'}}
+
+      - name: Build and push image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Use GitHub Actions cache to speed up layer rebuilds
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Build for both amd64 and arm64 (covers Apple Silicon runners too)
+          platforms: linux/amd64,linux/arm64
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Print image tags
+        run: |
+          echo "### ✅ Image published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Pin your \`main.tf\` to the SHA tag above for reproducible builds." >> $GITHUB_STEP_SUMMARY
