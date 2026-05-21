@@ -1,5 +1,12 @@
 FROM mcr.microsoft.com/devcontainers/ruby:3
 
+# Remove the broken Yarn apt source that ships in the base image.
+# Its GPG key (FF7CB566...) is expired/missing, causing apt-get update to
+# hard-fail with exit code 100 before we can install anything.
+RUN rm -f /etc/apt/sources.list.d/yarn.list \
+          /usr/share/keyrings/yarnkey.gpg \
+          /etc/apt/sources.list.d/yarn.list.bak
+
 # Install system dependencies in a single layer to keep image size down
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -10,9 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rails and common gems with no docs to keep image lean
-RUN gem install rails --no-document \
-    && gem install bundler --no-document
+# Install Rails and Bundler with no docs to keep image lean
+RUN gem install rails bundler --no-document
 
 # Smoke test — fails the build immediately if rails isn't on PATH
 RUN rails --version && ruby --version && bundler --version
