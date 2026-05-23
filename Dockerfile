@@ -8,7 +8,7 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /usr/share/keyrings/yarnkey.gpg \
           /etc/apt/sources.list.d/yarn.list.bak
 
-# Install system dependencies (including complete gobject-introspection & compiler specs)
+# Install system dependencies (including complete gobject & poppler compilation tools)
 RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -18,6 +18,7 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     libglib2.0-dev \
     libgirepository1.0-dev \
     gobject-introspection \
+    libpoppler-glib-dev \
     libssl-dev \
     libreadline-dev \
     zlib1g-dev \
