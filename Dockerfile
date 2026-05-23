@@ -1,14 +1,14 @@
 FROM ghcr.io/acidicts/ruby-base-3.4.7
 
-# Remove the broken Yarn apt source that ships in the base image.
-# Its GPG key (FF7CB566...) is expired/missing, causing apt-get update to
-# hard-fail with exit code 100 before we can install anything.
+# Remove known broken Yarn apt sources if they exist
 RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /usr/share/keyrings/yarnkey.gpg \
           /etc/apt/sources.list.d/yarn.list.bak
 
-# Install system dependencies in a single layer to keep image size down
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install system dependencies
+# Added flags to prevent broken/expired third-party keys from crashing the build
+RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
+    apt-get install -y --no-install-recommends \
     curl \
     git \
     build-essential \
