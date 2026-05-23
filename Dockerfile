@@ -8,13 +8,15 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /usr/share/keyrings/yarnkey.gpg \
           /etc/apt/sources.list.d/yarn.list.bak
 
-# Install system dependencies (including complete gobject & poppler compilation tools)
+# Install system dependencies (including nodejs, yarn, poppler, and gobject tools)
 RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
     curl \
     git \
     build-essential \
     pkg-config \
+    nodejs \
+    yarn \
     libglib2.0-dev \
     libgirepository1.0-dev \
     gobject-introspection \
@@ -27,8 +29,8 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
 # Install Rails and Bundler with no docs to keep image lean
 RUN gem install rails bundler --no-document
 
-# Smoke test — fails the build immediately if rails isn't on PATH
-RUN rails --version && ruby --version && bundler --version
+# Smoke test — fails the build immediately if core tools aren't on PATH
+RUN rails --version && ruby --version && bundler --version && yarn --version
 
 # --- OPTIMIZATION: Cache Gemfile gems into the image layer ---
 # Download Gemfile, lockfile, and .ruby-version from the hackclub/hcb repo to build the gem cache
