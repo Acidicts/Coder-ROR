@@ -56,6 +56,8 @@ jobs:
             type=schedule,pattern={{date 'YYYY-MM-DD'}}
 
       - name: Build and push Docker image
+        # 1. Add an ID so we can reference this step's outputs
+        id: push-step 
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -67,12 +69,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Generate artifact attestation
+      - name: Generate build provenance attestation
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
+          # 2. Wire the Docker outputs directly into the attestation subjects
+          subject-name: ghcr.io/acidicts/ruby-rails-hcb-dev
+          subject-digest: ${{ steps.push-step.outputs.digest }}
 
       - name: Print image tags
         run: |
