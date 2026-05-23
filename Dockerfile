@@ -8,17 +8,19 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /usr/share/keyrings/yarnkey.gpg \
           /etc/apt/sources.list.d/yarn.list.bak
 
-# Install system dependencies (including poppler / gobject-introspection requirements)
+# Install system dependencies (including complete gobject-introspection & compiler specs)
 RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
     curl \
     git \
     build-essential \
+    pkg-config \
+    libglib2.0-dev \
+    libgirepository1.0-dev \
+    gobject-introspection \
     libssl-dev \
     libreadline-dev \
     zlib1g-dev \
-    gobject-introspection \
-    libgirepository1.0-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Rails and Bundler with no docs to keep image lean
