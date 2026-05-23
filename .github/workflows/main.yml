@@ -2,8 +2,6 @@ name: Build & Push Ruby Rails Base Image
 
 on:
   push:
-    branches:
-      - main
     paths:
       # Only rebuild when the Dockerfile itself changes
       - "Dockerfile"
