@@ -55,19 +55,17 @@ jobs:
             # Tag with YYYY-MM-DD for date-based pinning (e.g. :2025-06-01)
             type=schedule,pattern={{date 'YYYY-MM-DD'}}
 
-      - name: Build and push image
-        id: push
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          # Use GitHub Actions cache to speed up layer rebuilds
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/acidicts/ruby-rails-hcb-dev:sha-${{ github.sha }}
+            ghcr.io/acidicts/ruby-rails-hcb-dev:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Build for both amd64 and arm64 (covers Apple Silicon runners too)
-          platforms: linux/amd64,linux/arm64
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
