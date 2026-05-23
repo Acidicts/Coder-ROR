@@ -16,7 +16,7 @@ on:
 env:
   REGISTRY: ghcr.io
   # This will resolve to e.g. ghcr.io/your-org/ruby-rails-base
-  IMAGE_NAME: ${{ github.repository_owner }}/ruby-rails-base
+  IMAGE_NAME: ${{ github.repository_owner }}/ruby-rails-hcb-dev
 
 jobs:
   build-and-push:
