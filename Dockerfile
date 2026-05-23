@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/ruby:3
+FROM ghcr.io/acidicts/ruby-base-3.4.7
 
 # Remove the broken Yarn apt source that ships in the base image.
 # Its GPG key (FF7CB566...) is expired/missing, causing apt-get update to
