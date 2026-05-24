@@ -1,73 +1,74 @@
 FROM ghcr.io/acidicts/ruby-base-3.4.7
 
-# Elevate privileges to root so apt-get has permission to run
+# Elevate privileges to root for system-level adjustments
 USER root
 
-# Remove known broken Yarn apt sources if they exist
+# 1. Clean out legacy/broken package lists
 RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /usr/share/keyrings/yarnkey.gpg \
           /etc/apt/sources.list.d/yarn.list.bak
 
-# Install system dependencies
-# Note: We removed 'yarn' from apt-get to avoid the 'cmdtest' package collision
-RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
-    apt-get install -y --no-install-recommends \
+# 2. Add NodeSource for Node.js v22 directly in the image layer
+RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg --yes && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+
+# 3. Install ALL system dependencies (including Node, Postgres, and native compilation extensions)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     build-essential \
     pkg-config \
     nodejs \
-    npm \
+    libpq-dev \
+    libvips-dev \
     libglib2.0-dev \
-    libgirepository1.0-dev \
-    gobject-introspection \
     libpoppler-glib-dev \
+    graphviz \
+    postgresql \
+    postgresql-contrib \
     libsodium-dev \
     libssl-dev \
     libreadline-dev \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the correct JavaScript Yarn package manager globally via npm
+# 4. Install the correct JavaScript Yarn package manager globally via npm
 RUN npm install -g yarn
 
-# Install Rails and Bundler with no docs to keep image lean
+# 5. Build core Ruby environment (Already using native Ruby 3.4.7 from your base image)
 RUN gem install rails bundler --no-document
 
-# Smoke test — fails the build immediately if core tools aren't on PATH properly
+# Smoke test core toolchain
 RUN rails --version && ruby --version && bundler --version && yarn --version
 
-# --- OPTIMIZATION: Cache Gemfile gems into the image layer ---
-# Download Gemfile, lockfile, and .ruby-version from the hackclub/hcb repo to build the gem cache
+# 6. Pre-cache your application's Ruby dependencies into the image layer
 RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/.ruby-version || true && \
     BUNDLE_IGNORE_RUBY_VERSION=true bundle install --retry 3 && \
     rm -rf /tmp/gem-cache
-# --------------------------------------------------------------
 
-# --- SYSTEM-LEVEL HOME FIX ---
-# Create /home/coder and grant ownership to the vscode user
+# 7. Secure the Coder workspace user environment
 RUN mkdir -p /home/coder && chown -R vscode:vscode /home/coder
 
-# (Optional) Remove the mkdir hijack block entirely if it isn't strictly 
-# required by internal hardcoded dependencies elsewhere in your base image.
-
-# --- THE HIJACK: Intercept 'mkdir' errors for /home/coder ---
+# Intercept and neutralize downstream workspace 'mkdir /home/coder' privilege errors gracefully
 RUN echo '#!/bin/sh\n\
-for arg in "$@"; do\n\
-  if [ "$arg" = "/home/coder" ] || [ "$arg" = "-p" -a "$2" = "/home/coder" ]; then\n\
+for arg in "$@";\n\
+do\n\
+  if [ "$arg" = "/home/coder" ] || [ "$arg" = "-p" -a "$2" = "/home/coder" ];\n\
+  then\n\
     exit 0\n\
   fi\n\
 done\n\
 exec /bin/mkdir "$@"' > /usr/local/bin/mkdir && \
 chmod +x /usr/local/bin/mkdir
 
-# Set environment paths to match the target workspace expectation
 ENV HOME=/home/coder
 ENV CODER_DATA=/home/coder
 
-# Drop back down to the non-root user context
+# Drop privileges back down to standard workspace context
 USER vscode
 WORKDIR /home/coder
