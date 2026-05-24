@@ -9,10 +9,7 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /etc/apt/sources.list.d/yarn.list.bak
 
 # Install system dependencies
-# - nodejs & yarn: For asset management and workspace compilation
-# - gobject-introspection & libglib2.0-dev: For native gem compilation extensions
-# - libpoppler-glib-dev: Resolves poppler C-extension installation failure
-# - libsodium-dev: Fixes discordrb voice support warning
+# Note: We removed 'yarn' from apt-get to avoid the 'cmdtest' package collision
 RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -20,7 +17,7 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     build-essential \
     pkg-config \
     nodejs \
-    yarn \
+    npm \
     libglib2.0-dev \
     libgirepository1.0-dev \
     gobject-introspection \
@@ -31,10 +28,13 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Install the correct JavaScript Yarn package manager globally via npm
+RUN npm install -g yarn
+
 # Install Rails and Bundler with no docs to keep image lean
 RUN gem install rails bundler --no-document
 
-# Smoke test — fails the build immediately if core tools aren't on PATH
+# Smoke test — fails the build immediately if core tools aren't on PATH properly
 RUN rails --version && ruby --version && bundler --version && yarn --version
 
 # --- OPTIMIZATION: Cache Gemfile gems into the image layer ---
@@ -52,8 +52,6 @@ RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
 RUN mkdir -p /home/coder && chmod 777 /home /home/coder
 
 # --- THE HIJACK: Intercept 'mkdir' errors for /home/coder ---
-# Create a wrapper script that drops into /usr/local/bin (which takes precedence on PATH).
-# If a script runs `mkdir /home/coder`, it will silently return success instead of crashing.
 RUN echo '#!/bin/sh\n\
 for arg in "$@"; do\n\
   if [ "$arg" = "/home/coder" ] || [ "$arg" = "-p" -a "$2" = "/home/coder" ]; then\n\
@@ -69,5 +67,4 @@ ENV CODER_DATA=/home/coder
 
 # Drop back down to the non-root user context
 USER vscode
-WORKDIR /home/coderUSER vscode
 WORKDIR /home/coder
