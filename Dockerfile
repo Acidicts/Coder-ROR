@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg --yes && \
     echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 
-# 3. Install ALL system dependencies (including Node, Postgres, and native compilation extensions)
+# 3. Install ALL system dependencies (Fixing gobject-introspection build error)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     libvips-dev \
     libglib2.0-dev \
+    libgirepository1.0-dev \
+    gobject-introspection \
     libpoppler-glib-dev \
     graphviz \
     postgresql \
@@ -62,6 +64,16 @@ do\n\
   then\n\
     exit 0\n\
   fi\n\
+done\n\
+exec /bin/mkdir "$@"' > /usr/local/bin/mkdir && \
+chmod +x /usr/local/bin/mkdir
+
+ENV HOME=/home/coder
+ENV CODER_DATA=/home/coder
+
+# Drop privileges back down to standard workspace context
+USER vscode
+WORKDIR /home/coder  fi\n\
 done\n\
 exec /bin/mkdir "$@"' > /usr/local/bin/mkdir && \
 chmod +x /usr/local/bin/mkdir
