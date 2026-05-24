@@ -47,12 +47,17 @@ RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     rm -rf /tmp/gem-cache
 # --------------------------------------------------------------
 
-# --- ENVIRONMENT WORKAROUND ---
-# Create the /home/coder directory expected by the environment bootstrapper 
-# and give ownership over to the non-root vscode runtime user.
+# --- SYSTEM-LEVEL WORKSPACE HOME FIX ---
+# Instead of fighting runtime directory creation permissions, we configure the Linux
+# environment to map the vscode user space directly to /home/coder internally.
 RUN mkdir -p /home/coder && \
-    ln -s /home/vscode/.bashrc /home/coder/.bashrc || true && \
-    chown -R vscode:vscode /home/coder /home/vscode
+    chown -R vscode:vscode /home/coder && \
+    sed -i 's|/home/vscode|/home/coder|g' /etc/passwd
+
+# Establish fallback environment variables for scripts that parse $HOME directly
+ENV HOME=/home/coder
+ENV CODER_DATA=/home/coder
 
 # Drop back down to the non-root user for runtime safety
 USER vscode
+WORKDIR /home/coder
