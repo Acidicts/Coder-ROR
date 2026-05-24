@@ -8,7 +8,11 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /usr/share/keyrings/yarnkey.gpg \
           /etc/apt/sources.list.d/yarn.list.bak
 
-# Install system dependencies (including nodejs, yarn, poppler, and gobject tools)
+# Install system dependencies
+# - nodejs & yarn: For asset management and workspace compilation
+# - gobject-introspection & libglib2.0-dev: For native gem compilation extensions
+# - libpoppler-glib-dev: Resolves poppler C-extension installation failure
+# - libsodium-dev: Fixes discordrb voice support warning
 RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -21,6 +25,7 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     libgirepository1.0-dev \
     gobject-introspection \
     libpoppler-glib-dev \
+    libsodium-dev \
     libssl-dev \
     libreadline-dev \
     zlib1g-dev \
@@ -41,6 +46,13 @@ RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     BUNDLE_IGNORE_RUBY_VERSION=true bundle install --retry 3 && \
     rm -rf /tmp/gem-cache
 # --------------------------------------------------------------
+
+# --- ENVIRONMENT WORKAROUND ---
+# Create the /home/coder directory expected by the environment bootstrapper 
+# and give ownership over to the non-root vscode runtime user.
+RUN mkdir -p /home/coder && \
+    ln -s /home/vscode/.bashrc /home/coder/.bashrc || true && \
+    chown -R vscode:vscode /home/coder /home/vscode
 
 # Drop back down to the non-root user for runtime safety
 USER vscode
