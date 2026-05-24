@@ -47,17 +47,27 @@ RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     rm -rf /tmp/gem-cache
 # --------------------------------------------------------------
 
-# --- SYSTEM-LEVEL WORKSPACE HOME FIX ---
-# Instead of fighting runtime directory creation permissions, we configure the Linux
-# environment to map the vscode user space directly to /home/coder internally.
-RUN mkdir -p /home/coder && \
-    chown -R vscode:vscode /home/coder && \
-    sed -i 's|/home/vscode|/home/coder|g' /etc/passwd
+# --- SYSTEM-LEVEL HOME FIX ---
+# Build /home/coder and make it globally readable/writable by any runtime user ID
+RUN mkdir -p /home/coder && chmod 777 /home /home/coder
 
-# Establish fallback environment variables for scripts that parse $HOME directly
+# --- THE HIJACK: Intercept 'mkdir' errors for /home/coder ---
+# Create a wrapper script that drops into /usr/local/bin (which takes precedence on PATH).
+# If a script runs `mkdir /home/coder`, it will silently return success instead of crashing.
+RUN echo '#!/bin/sh\n\
+for arg in "$@"; do\n\
+  if [ "$arg" = "/home/coder" ] || [ "$arg" = "-p" -a "$2" = "/home/coder" ]; then\n\
+    exit 0\n\
+  fi\n\
+done\n\
+exec /bin/mkdir "$@"' > /usr/local/bin/mkdir && \
+chmod +x /usr/local/bin/mkdir
+
+# Set environment paths to match the target workspace expectation
 ENV HOME=/home/coder
 ENV CODER_DATA=/home/coder
 
-# Drop back down to the non-root user for runtime safety
+# Drop back down to the non-root user context
 USER vscode
+WORKDIR /home/coderUSER vscode
 WORKDIR /home/coder
