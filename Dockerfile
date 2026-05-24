@@ -68,16 +68,7 @@ done\n\
 exec /bin/mkdir "$@"' > /usr/local/bin/mkdir && \
 chmod +x /usr/local/bin/mkdir
 
-ENV HOME=/home/coder
-ENV CODER_DATA=/home/coder
-
-# Drop privileges back down to standard workspace context
-USER vscode
-WORKDIR /home/coder  fi\n\
-done\n\
-exec /bin/mkdir "$@"' > /usr/local/bin/mkdir && \
-chmod +x /usr/local/bin/mkdir
-
+# 8. Set global environment contexts safely after the script block
 ENV HOME=/home/coder
 ENV CODER_DATA=/home/coder
 
