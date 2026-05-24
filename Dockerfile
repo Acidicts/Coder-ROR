@@ -48,8 +48,11 @@ RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
 # --------------------------------------------------------------
 
 # --- SYSTEM-LEVEL HOME FIX ---
-# Build /home/coder and make it globally readable/writable by any runtime user ID
-RUN mkdir -p /home/coder && chmod 777 /home /home/coder
+# Create /home/coder and grant ownership to the vscode user
+RUN mkdir -p /home/coder && chown -R vscode:vscode /home/coder
+
+# (Optional) Remove the mkdir hijack block entirely if it isn't strictly 
+# required by internal hardcoded dependencies elsewhere in your base image.
 
 # --- THE HIJACK: Intercept 'mkdir' errors for /home/coder ---
 RUN echo '#!/bin/sh\n\
