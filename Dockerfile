@@ -1,3 +1,4 @@
+# https://github.com/Acidicts/Ruby-3.4.7-Dockerfile
 FROM ghcr.io/acidicts/ruby-base-3.4.7
 
 # Elevate privileges to root for system-level adjustments
@@ -34,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     libreadline-dev \
     zlib1g-dev \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # 4. Install the correct JavaScript Yarn package manager globally via npm
@@ -53,25 +55,16 @@ RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     BUNDLE_IGNORE_RUBY_VERSION=true bundle install --retry 3 && \
     rm -rf /tmp/gem-cache
 
-# 7. Secure the Coder workspace user environment
-RUN mkdir -p /home/coder && chown -R vscode:vscode /home/coder
+# 7. Create an explicit 'coder' user so Coder doesn't get confused by 'vscode'
+# This removes the need for the mkdir wrapper hack entirely.
+RUN id -u vscode >/dev/null 2>&1 && userdel -r vscode || true \
+    && useradd -m -s /bin/bash -u 1000 coder \
+    && echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder
 
-# Intercept and neutralize downstream workspace 'mkdir /home/coder' privilege errors gracefully
-RUN echo '#!/bin/sh\n\
-for arg in "$@";\n\
-do\n\
-  if [ "$arg" = "/home/coder" ] || [ "$arg" = "-p" -a "$2" = "/home/coder" ];\n\
-  then\n\
-    exit 0\n\
-  fi\n\
-done\n\
-exec /bin/mkdir "$@"' > /usr/local/bin/mkdir && \
-chmod +x /usr/local/bin/mkdir
-
-# 8. Set global environment contexts safely after the script block
+# Set global environment contexts safely
 ENV HOME=/home/coder
 ENV CODER_DATA=/home/coder
 
 # Drop privileges back down to standard workspace context
-USER vscode
-WORKDIR /home/coder
+USER coder
+WORKDIR /workspaces
