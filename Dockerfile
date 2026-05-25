@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg --yes && \
     echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 
-# 3. Install ALL system dependencies (Fixing gobject-introspection build error)
+# 3. Install ALL system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
@@ -38,23 +38,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Install JavaScript Yarn package manager globally via npm
-RUN npm install -g yarn
-
-# 5. Create an explicit 'coder' user and set up sudo permissions
+# 4. Create an explicit 'coder' user and set up sudo permissions
 RUN id -u vscode >/dev/null 2>&1 && userdel -r vscode || true \
     && useradd -m -s /bin/bash -u 1000 coder \
     && echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder
 
-# Configure global Bundler & System Paths explicitly (Fixes Yarn binary mapping)
+# 5. Setup Bundler & Global NPM Paths to be completely owned by user 'coder'
 ENV GEM_HOME=/usr/local/bundle
 ENV BUNDLE_PATH=$GEM_HOME
 ENV BUNDLE_BIN=$GEM_HOME/bin
-ENV PATH=$BUNDLE_BIN:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
+ENV NPM_CONFIG_PREFIX=/home/coder/.npm-global
 
-# 6. Pull Gemfile state and build dependencies as root to write to global paths safely
-RUN mkdir -p $GEM_HOME && chown -R coder:coder $GEM_HOME
+# Safely append paths without wiping out the base image's predefined paths
+ENV PATH=$BUNDLE_BIN:/home/coder/.npm-global/bin:$PATH
 
+RUN mkdir -p $GEM_HOME /home/coder/.npm-global && \
+    chown -R coder:coder $GEM_HOME /home/coder/.npm-global
+
+# Drop privileges down to standard workspace context
+USER coder
+WORKDIR /workspaces
+
+# 6. Install Yarn into the coder-owned global space
+RUN npm install -g yarn
+
+# 7. Pull Gemfile state and build dependencies
+USER root
 RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
@@ -65,6 +74,4 @@ RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     chown -R coder:coder $GEM_HOME && \
     rm -rf /tmp/gem-cache
 
-# Drop privileges back down to standard workspace context for Coder
 USER coder
-WORKDIR /workspaces
