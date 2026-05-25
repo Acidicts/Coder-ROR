@@ -61,14 +61,26 @@ ENV CODER_DATA=/home/coder
 USER coder
 WORKDIR /workspaces
 
-# 6. Pull the precise Gemfile state and install gems directly into the image layers
+# Configure global Bundler paths so gems are accessible globally
+ENV GEM_HOME=/usr/local/bundle
+ENV BUNDLE_PATH=$GEM_HOME
+ENV BUNDLE_BIN=$GEM_HOME/bin
+ENV PATH=$BUNDLE_BIN:$PATH
+
+# 6. Pull Gemfile state and build dependencies as root to write to global paths safely
+USER root
+RUN mkdir -p $GEM_HOME && chown -R coder:coder $GEM_HOME
+
 RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/.ruby-version || true && \
-    # Install matching Bundler version parsed from Gemfile.lock
-    BUNDLER_VERSION=$(tail -n 2 Gemfile.lock | tr -d '[:space:]') && \
+    BUNDLER_VERSION=$(tail -n 2 Gemfile.lock | tr -d '[:space:]' | tr -d 'BUNDLEDWITH') && \
     gem install bundler -v "$BUNDLER_VERSION" --no-document && \
-    # Install dependencies into the global system path
     BUNDLE_IGNORE_RUBY_VERSION=true bundle install --jobs=4 --retry=3 && \
+    chown -R coder:coder $GEM_HOME && \
     rm -rf /tmp/gem-cache
+
+# Drop privileges back down to standard workspace context for Coder
+USER coder
+WORKDIR /workspaces
