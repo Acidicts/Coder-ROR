@@ -47,16 +47,7 @@ RUN gem install rails bundler --no-document
 # Smoke test core toolchain
 RUN rails --version && ruby --version && bundler --version && yarn --version
 
-# 6. Pre-cache your application's Ruby dependencies into the image layer
-RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
-    curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
-    curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
-    curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/.ruby-version || true && \
-    BUNDLE_IGNORE_RUBY_VERSION=true bundle install --retry 3 && \
-    rm -rf /tmp/gem-cache
-
-# 7. Create an explicit 'coder' user so Coder doesn't get confused by 'vscode'
-# This removes the need for the mkdir wrapper hack entirely.
+# 6. Create an explicit 'coder' user so Coder doesn't get confused by 'vscode'
 RUN id -u vscode >/dev/null 2>&1 && userdel -r vscode || true \
     && useradd -m -s /bin/bash -u 1000 coder \
     && echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder
@@ -65,6 +56,18 @@ RUN id -u vscode >/dev/null 2>&1 && userdel -r vscode || true \
 ENV HOME=/home/coder
 ENV CODER_DATA=/home/coder
 
-# Drop privileges back down to standard workspace context
+# Drop privileges down to standard workspace context BEFORE caching gems
 USER coder
 WORKDIR /workspaces
+
+# 7. Pre-cache application's Ruby dependencies safely under the coder user
+# Uses 'gem update --system' inside the home directory context just in case.
+RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
+    curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
+    curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
+    curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/.ruby-version || true && \
+    # Extract the exact bundler version specified in HCB's Gemfile.lock and install it
+    BUNDLER_VERSION=$(tail -n 2 Gemfile.lock | tr -d '[:space:]') && \
+    gem install bundler -v "$BUNDLER_VERSION" --no-document || true && \
+    BUNDLE_IGNORE_RUBY_VERSION=true bundle install --retry 3 && \
+    rm -rf /tmp/gem-cache
