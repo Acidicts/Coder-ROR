@@ -74,6 +74,6 @@ RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     chown -R coder:coder $GEM_HOME && \
     rm -rf /tmp/gem-cache
 
-rvm install "ruby-3.4.7"
+RUN rvm install "ruby-3.4.7"
 
 USER coder
