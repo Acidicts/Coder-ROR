@@ -46,29 +46,13 @@ RUN id -u vscode >/dev/null 2>&1 && userdel -r vscode || true \
     && useradd -m -s /bin/bash -u 1000 coder \
     && echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder
 
-# Configure global Bundler paths so gems are accessible globally by 'coder'
+# Configure global Bundler & System Paths explicitly (Fixes Yarn binary mapping)
 ENV GEM_HOME=/usr/local/bundle
 ENV BUNDLE_PATH=$GEM_HOME
 ENV BUNDLE_BIN=$GEM_HOME/bin
-ENV PATH=$BUNDLE_BIN:$PATH
-RUN mkdir -p $GEM_HOME && chown -R coder:coder $GEM_HOME
-
-# Set global environment contexts safely
-ENV HOME=/home/coder
-ENV CODER_DATA=/home/coder
-
-# Drop privileges down to standard workspace context
-USER coder
-WORKDIR /workspaces
-
-# Configure global Bundler paths so gems are accessible globally
-ENV GEM_HOME=/usr/local/bundle
-ENV BUNDLE_PATH=$GEM_HOME
-ENV BUNDLE_BIN=$GEM_HOME/bin
-ENV PATH=$BUNDLE_BIN:$PATH
+ENV PATH=$BUNDLE_BIN:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
 
 # 6. Pull Gemfile state and build dependencies as root to write to global paths safely
-USER root
 RUN mkdir -p $GEM_HOME && chown -R coder:coder $GEM_HOME
 
 RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
