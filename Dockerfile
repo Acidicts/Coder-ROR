@@ -38,36 +38,37 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Install the correct JavaScript Yarn package manager globally via npm
+# 4. Install JavaScript Yarn package manager globally via npm
 RUN npm install -g yarn
 
-# 5. Build core Ruby environment (Already using native Ruby 3.4.7 from your base image)
-RUN gem install rails bundler --no-document
-
-# Smoke test core toolchain
-RUN rails --version && ruby --version && bundler --version && yarn --version
-
-# 6. Create an explicit 'coder' user so Coder doesn't get confused by 'vscode'
+# 5. Create an explicit 'coder' user and set up sudo permissions
 RUN id -u vscode >/dev/null 2>&1 && userdel -r vscode || true \
     && useradd -m -s /bin/bash -u 1000 coder \
     && echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder
+
+# Configure global Bundler paths so gems are accessible globally by 'coder'
+ENV GEM_HOME=/usr/local/bundle
+ENV BUNDLE_PATH=$GEM_HOME
+ENV BUNDLE_BIN=$GEM_HOME/bin
+ENV PATH=$BUNDLE_BIN:$PATH
+RUN mkdir -p $GEM_HOME && chown -R coder:coder $GEM_HOME
 
 # Set global environment contexts safely
 ENV HOME=/home/coder
 ENV CODER_DATA=/home/coder
 
-# Drop privileges down to standard workspace context BEFORE caching gems
+# Drop privileges down to standard workspace context
 USER coder
 WORKDIR /workspaces
 
-# 7. Pre-cache application's Ruby dependencies safely under the coder user
-# Uses 'gem update --system' inside the home directory context just in case.
+# 6. Pull the precise Gemfile state and install gems directly into the image layers
 RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/.ruby-version || true && \
-    # Extract the exact bundler version specified in HCB's Gemfile.lock and install it
+    # Install matching Bundler version parsed from Gemfile.lock
     BUNDLER_VERSION=$(tail -n 2 Gemfile.lock | tr -d '[:space:]') && \
-    gem install bundler -v "$BUNDLER_VERSION" --no-document || true && \
-    BUNDLE_IGNORE_RUBY_VERSION=true bundle install --retry 3 && \
+    gem install bundler -v "$BUNDLER_VERSION" --no-document && \
+    # Install dependencies into the global system path
+    BUNDLE_IGNORE_RUBY_VERSION=true bundle install --jobs=4 --retry=3 && \
     rm -rf /tmp/gem-cache
