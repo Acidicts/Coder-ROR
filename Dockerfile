@@ -48,9 +48,11 @@ RUN cd /tmp && \
 # Ensure relative ./bin directory is checked first for executables
 ENV PATH="./bin:$PATH"
 
-RUN apt install pipx -y 
-RUN pipx ensurepath 
-RUN pipx install wakatime
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends pipx && \
+    rm -rf /var/lib/apt/lists/* && \
+    pipx ensurepath && \
+    pipx install wakatime
 
 # Smoke test — fails the build immediately if tools aren't functional
 RUN rails --version && ruby --version && bundler --version && starship --version
