@@ -22,6 +22,19 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
 # Install Rails and Bundler with no docs to keep image lean
 RUN gem install rails bundler --no-document
 
+# ==============================================================================
+# PRE-BAKE GEMS INTO THE IMAGE LAYER
+# ==============================================================================
+# Generate a dummy app matching the exact '--minimal' specs Coder uses,
+# run bundle install to download the cache into /usr/local/bundle, then erase it.
+RUN cd /tmp && \
+    rails new dummy_app --minimal --skip-bundle && \
+    cd dummy_app && \
+    bundle install && \
+    cd /tmp && \
+    rm -rf dummy_app
+# ==============================================================================
+
 # Smoke test — fails the build immediately if rails isn't on PATH
 RUN rails --version && ruby --version && bundler --version
 
