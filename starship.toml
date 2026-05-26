@@ -181,7 +181,6 @@ when = "true"
 shell = ["bash", "--noprofile", "--norc"]
 style = "bg:purple"
 format = '[[   $output ](fg:mantle bg:purple)]($style)'
-os = "macos"
 
 
 [line_break]
