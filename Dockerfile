@@ -42,8 +42,6 @@ RUN npm install -g yarn
 WORKDIR /workspaces
 
 RUN git clone --depth=1 https://github.com/hackclub/hcb.git /workspaces && \
-    BUNDLER_VERSION=$(grep -A1 "BUNDLED WITH" /workspaces/Gemfile.lock | tail -1 | tr -d '[:space:]') && \
-    if [ -n "$BUNDLER_VERSION" ]; then gem install bundler -v "$BUNDLER_VERSION" --no-document; fi && \
     cd /workspaces && bundle install --jobs=4 --retry=3 && \
     yarn install --frozen-lockfile || yarn install
 
