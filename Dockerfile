@@ -32,6 +32,8 @@ ENV PATH=$BUNDLE_BIN:/home/coder/.npm-global/bin:$PATH
 RUN mkdir -p $GEM_HOME /home/coder/.npm-global && \
     chown -R coder:coder $GEM_HOME /home/coder/.npm-global
 
+RUN mkdir -p /workspaces && chown coder:coder /workspaces
+
 USER coder
 RUN npm install -g yarn
 
