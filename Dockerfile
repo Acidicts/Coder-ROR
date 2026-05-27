@@ -40,15 +40,18 @@ RUN npm install -g yarn
 WORKDIR /workspaces
 RUN git clone --depth=1 https://github.com/hackclub/hcb.git /workspaces
 
+USER root
+RUN chown -R coder:coder /usr/local/rvm
 RUN BUNDLER_VERSION=$(grep -A1 "BUNDLED WITH" /workspaces/Gemfile.lock | tail -1 | tr -d '[:space:]') && \
     gem install bundler -v "$BUNDLER_VERSION" --no-document
 
 RUN bundle install --jobs=4 --retry=3
+RUN chown -R coder:coder /usr/local/bundle
 
+USER coder
 RUN yarn install --frozen-lockfile || yarn install
 
 USER root
-
 RUN PG_VER=$(pg_lsclusters -h 2>/dev/null | head -1 | awk '{print $1}') && \
     echo "host all all 127.0.0.1/32 trust" >> /etc/postgresql/$PG_VER/main/pg_hba.conf && \
     echo "host all all ::1/128 trust" >> /etc/postgresql/$PG_VER/main/pg_hba.conf
