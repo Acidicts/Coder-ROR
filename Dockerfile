@@ -54,6 +54,8 @@ RUN apt-get update && \
     pipx ensurepath && \
     pipx install wakatime
 
+RUN curl -fsSL https://opencode.ai/install | bash
+
 # Smoke test — fails the build immediately if tools aren't functional
 RUN rails --version && ruby --version && bundler --version && starship --version
 
