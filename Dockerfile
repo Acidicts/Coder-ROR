@@ -47,12 +47,7 @@ RUN git clone --depth=1 https://github.com/hackclub/hcb.git /workspaces && \
 
 USER root
 
-RUN for conf in /etc/postgresql/*/main/pg_hba.conf; do \
-      if [ -f "$conf" ]; then \
-        echo "host all all 127.0.0.1/32 trust" >> "$conf"; \
-        echo "host all all ::1/128 trust" >> "$conf"; \
-      fi; \
-    done && \
+RUN find /etc/postgresql -name pg_hba.conf -type f -exec sh -c 'sed -i "s|^host.*127.0.0.1/32.*scram-sha-256|host    all             all             127.0.0.1/32            trust|" "$1"; sed -i "s|^host.*::1/128.*scram-sha-256|host    all             all             ::1/128                 trust|" "$1"' _ {} \; 2>/dev/null; \
     PG_VER=$(pg_lsclusters -h 2>/dev/null | head -1 | awk '{print $1}') && \
     PG_CLUSTER=$(pg_lsclusters -h 2>/dev/null | head -1 | awk '{print $2}') && \
     if [ -n "$PG_VER" ] && [ -n "$PG_CLUSTER" ]; then \
