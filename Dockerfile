@@ -1,64 +1,63 @@
 FROM ghcr.io/acidicts/ruby-base-3.4.7
 
+# Elevate privileges to root so apt-get has permission to run
 USER root
 
+# Remove known broken Yarn apt sources if they exist
 RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /usr/share/keyrings/yarnkey.gpg \
           /etc/apt/sources.list.d/yarn.list.bak
 
-RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
-    mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg --yes && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl git build-essential pkg-config nodejs \
-    libpq-dev libvips-dev libglib2.0-dev libgirepository1.0-dev \
-    gobject-introspection libpoppler-glib-dev graphviz \
-    postgresql postgresql-contrib redis-server \
-    libsodium-dev libssl-dev libreadline-dev zlib1g-dev sudo \
-    tesseract-ocr libtesseract-dev libleptonica-dev \
-    libjemalloc2 poppler-utils \
+# Install system dependencies + fontconfig & unzip for NerdFont handling
+RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    build-essential \
+    libssl-dev \
+    libreadline-dev \
+    zlib1g-dev \
+    fontconfig \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
-RUN id -u vscode >/dev/null 2>&1 && userdel -r vscode || true \
-    && useradd -m -s /bin/bash -u 1000 coder \
-    && echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder
+# Install Starship Prompt natively
+RUN curl -sS https://starship.rs/install.sh | sh -s -- -y
 
-ENV GEM_HOME=/usr/local/bundle
-ENV BUNDLE_PATH=$GEM_HOME
-ENV BUNDLE_BIN=$GEM_HOME/bin
-ENV NPM_CONFIG_PREFIX=/home/coder/.npm-global
-ENV PATH=$BUNDLE_BIN:/home/coder/.npm-global/bin:$PATH
+# Download and install JetBrainsMono Nerd Font system-wide
+RUN mkdir -p /usr/share/fonts/truetype/jetbrains-nf && \
+    curl -L -o /tmp/jb_mono.zip https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip && \
+    unzip -o /tmp/jb_mono.zip -d /usr/share/fonts/truetype/jetbrains-nf/ && \
+    rm -f /tmp/jb_mono.zip && \
+    fc-cache -fv
 
-RUN mkdir -p $GEM_HOME /home/coder/.npm-global && \
-    chown -R coder:coder $GEM_HOME /home/coder/.npm-global
+# Install Rails and Bundler with no docs to keep image lean
+RUN gem install rails bundler --no-document
 
-RUN mkdir -p /workspaces && chown coder:coder /workspaces
+# ==============================================================================
+# PRE-BAKE GEMS INTO THE IMAGE LAYER
+# ==============================================================================
+RUN cd /tmp && \
+    rails new dummy_app --minimal --skip-bundle && \
+    cd dummy_app && \
+    bundle install && \
+    cd /tmp && \
+    rm -rf dummy_app
+# ==============================================================================
 
-USER coder
-RUN npm install -g yarn
-RUN gem update --system 2>/dev/null || true
+# Ensure relative ./bin directory is checked first for executables
+ENV PATH="./bin:$PATH"
 
-WORKDIR /workspaces
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends pipx && \
+    rm -rf /var/lib/apt/lists/* && \
+    pipx ensurepath && \
+    pipx install wakatime
 
-RUN git clone --depth=1 https://github.com/hackclub/hcb.git /workspaces && \
-    BUNDLER_VERSION=$(grep -A1 "BUNDLED WITH" /workspaces/Gemfile.lock | tail -1 | tr -d '[:space:]') && \
-    if [ -n "$BUNDLER_VERSION" ]; then gem install bundler -v "$BUNDLER_VERSION" --no-document; fi && \
-    cd /workspaces && bundle install --jobs=4 --retry=3 && \
-    yarn install --frozen-lockfile || yarn install
+RUN curl -fsSL https://opencode.ai/install | bash
 
-USER root
+# Smoke test — fails the build immediately if tools aren't functional
+RUN rails --version && ruby --version && bundler --version && starship --version
 
-RUN PG_VER=$(pg_lsclusters -h 2>/dev/null | head -1 | awk '{print $1}') && \
-    PG_CLUSTER=$(pg_lsclusters -h 2>/dev/null | head -1 | awk '{print $2}') && \
-    if [ -n "$PG_VER" ]; then \
-      echo "host all all 127.0.0.1/32 trust" >> /etc/postgresql/$PG_VER/main/pg_hba.conf && \
-      echo "host all all ::1/128 trust" >> /etc/postgresql/$PG_VER/main/pg_hba.conf && \
-      pg_ctlcluster $PG_VER $PG_CLUSTER start && \
-      su - postgres -c "createuser -s coder" 2>/dev/null || true && \
-      pg_ctlcluster $PG_VER $PG_CLUSTER stop || true; \
-    fi
-
-USER coder
-WORKDIR /workspaces
+# Drop back down to the non-root user for runtime safety
+USER vscode
