@@ -41,12 +41,11 @@ WORKDIR /workspaces
 RUN git clone --depth=1 https://github.com/hackclub/hcb.git /workspaces
 
 USER root
-RUN chown -R coder:coder /usr/local/rvm
 RUN BUNDLER_VERSION=$(grep -A1 "BUNDLED WITH" /workspaces/Gemfile.lock | tail -1 | tr -d '[:space:]') && \
     gem install bundler -v "$BUNDLER_VERSION" --no-document
 
-RUN bundle install --jobs=4 --retry=3
-RUN chown -R coder:coder /usr/local/bundle
+RUN bundle install --jobs=4 --retry=3 && \
+    chown -R coder:coder /usr/local/rvm /usr/local/bundle
 
 USER coder
 RUN yarn install --frozen-lockfile || yarn install
