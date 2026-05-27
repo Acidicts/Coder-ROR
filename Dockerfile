@@ -38,7 +38,6 @@ RUN mkdir -p /workspaces && chown coder:coder /workspaces
 
 USER coder
 RUN npm install -g yarn
-RUN gem update --system 2>/dev/null || true
 
 WORKDIR /workspaces
 
