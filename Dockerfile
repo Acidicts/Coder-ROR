@@ -59,26 +59,25 @@ RUN PG_VER=$(pg_lsclusters -h | head -1 | awk '{print $1}') && \
 
 RUN cd /workspaces && \
     cp .env.development.example .env.development && \
-    ruby -r securerandom -e '
-      text = File.read(".env.development")
-      text.gsub!("@db:", "@127.0.0.1:")
-      text.gsub!("postgres:postgres@", "coder@")
-      text.gsub!("redis://redis", "redis://127.0.0.1")
-      lines = text.lines.map do |line|
-        key = line.split("=", 2).first
-        case key
-        when "LOCKBOX" then "LOCKBOX=#{SecureRandom.hex(32)}\n"
-        when "HASHID_SALT" then "HASHID_SALT=#{SecureRandom.hex(16)}\n"
-        when "ACTIVE_RECORD__ENCRYPTION__DETERMINISTIC_KEY" then "ACTIVE_RECORD__ENCRYPTION__DETERMINISTIC_KEY=#{SecureRandom.hex(16)}\n"
-        when "ACTIVE_RECORD__ENCRYPTION__KEY_DERIVATION_SALT" then "ACTIVE_RECORD__ENCRYPTION__KEY_DERIVATION_SALT=#{SecureRandom.hex(16)}\n"
-        when "ACTIVE_RECORD__ENCRYPTION__PRIMARY_KEY" then "ACTIVE_RECORD__ENCRYPTION__PRIMARY_KEY=#{SecureRandom.hex(16)}\n"
-        else line
-        end
-      end
-      lines << "SECRET_KEY_BASE=#{SecureRandom.hex(64)}\n"
-      lines << "RAILS_ENV=development\n"
-      File.write(".env.development", lines.join)
-    ' && \
+    ruby -r securerandom -e '\
+text = File.read(".env.development"); \
+text.gsub!("@db:", "@127.0.0.1:"); \
+text.gsub!("postgres:postgres@", "coder@"); \
+text.gsub!("redis://redis", "redis://127.0.0.1"); \
+lines = text.lines.map do |line| \
+  key = line.split("=", 2).first; \
+  case key; \
+  when "LOCKBOX" then "LOCKBOX=#{SecureRandom.hex(32)}\n"; \
+  when "HASHID_SALT" then "HASHID_SALT=#{SecureRandom.hex(16)}\n"; \
+  when "ACTIVE_RECORD__ENCRYPTION__DETERMINISTIC_KEY" then "ACTIVE_RECORD__ENCRYPTION__DETERMINISTIC_KEY=#{SecureRandom.hex(16)}\n"; \
+  when "ACTIVE_RECORD__ENCRYPTION__KEY_DERIVATION_SALT" then "ACTIVE_RECORD__ENCRYPTION__KEY_DERIVATION_SALT=#{SecureRandom.hex(16)}\n"; \
+  when "ACTIVE_RECORD__ENCRYPTION__PRIMARY_KEY" then "ACTIVE_RECORD__ENCRYPTION__PRIMARY_KEY=#{SecureRandom.hex(16)}\n"; \
+  else line; \
+  end; \
+end; \
+lines << "SECRET_KEY_BASE=#{SecureRandom.hex(64)}\n"; \
+lines << "RAILS_ENV=development\n"; \
+File.write(".env.development", lines.join)' && \
     chown coder:coder .env.development
 
 RUN PG_VER=$(pg_lsclusters -h | head -1 | awk '{print $1}') && \
