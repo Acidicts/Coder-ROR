@@ -56,6 +56,8 @@ RUN apt-get update && \
 
 RUN curl -fsSL https://opencode.ai/install | bash
 
+RUN rvmsudo bundle install
+
 # Smoke test — fails the build immediately if tools aren't functional
 RUN rails --version && ruby --version && bundler --version && starship --version
 
