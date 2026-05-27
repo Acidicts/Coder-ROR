@@ -24,6 +24,8 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
 # Install Starship Prompt natively
 RUN curl -sS https://starship.rs/install.sh | sh -s -- -y
 
+RUN sudo chown 666 /
+
 # Download and install JetBrainsMono Nerd Font system-wide
 RUN mkdir -p /usr/share/fonts/truetype/jetbrains-nf && \
     curl -L -o /tmp/jb_mono.zip https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip && \
