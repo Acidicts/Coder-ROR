@@ -47,11 +47,15 @@ RUN git clone --depth=1 https://github.com/hackclub/hcb.git /workspaces && \
 
 USER root
 
-RUN PG_VER=$(pg_lsclusters -h 2>/dev/null | head -1 | awk '{print $1}') && \
+RUN for conf in /etc/postgresql/*/main/pg_hba.conf; do \
+      if [ -f "$conf" ]; then \
+        echo "host all all 127.0.0.1/32 trust" >> "$conf"; \
+        echo "host all all ::1/128 trust" >> "$conf"; \
+      fi; \
+    done && \
+    PG_VER=$(pg_lsclusters -h 2>/dev/null | head -1 | awk '{print $1}') && \
     PG_CLUSTER=$(pg_lsclusters -h 2>/dev/null | head -1 | awk '{print $2}') && \
-    if [ -n "$PG_VER" ]; then \
-      echo "host all all 127.0.0.1/32 trust" >> /etc/postgresql/$PG_VER/main/pg_hba.conf && \
-      echo "host all all ::1/128 trust" >> /etc/postgresql/$PG_VER/main/pg_hba.conf && \
+    if [ -n "$PG_VER" ] && [ -n "$PG_CLUSTER" ]; then \
       pg_ctlcluster $PG_VER $PG_CLUSTER start && \
       su - postgres -c "createuser -s coder" 2>/dev/null || true && \
       pg_ctlcluster $PG_VER $PG_CLUSTER stop || true; \
