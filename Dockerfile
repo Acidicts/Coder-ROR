@@ -62,6 +62,8 @@ WORKDIR /workspaces
 # 6. Install Yarn into the coder-owned global space
 RUN npm install -g yarn
 
+RUN rvm install "ruby-3.4.7"
+
 # 7. Pull Gemfile state and build dependencies
 USER root
 RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
@@ -70,12 +72,8 @@ RUN mkdir -p /tmp/gem-cache && cd /tmp/gem-cache && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/.ruby-version || true && \
     BUNDLER_VERSION=$(tail -n 2 Gemfile.lock | tr -d '[:space:]' | tr -d 'BUNDLEDWITH') && \
     gem install bundler -v "$BUNDLER_VERSION" --no-document && \
-    BUNDLE_IGNORE_RUBY_VERSION=true bundle install --jobs=4 --retry=3 && \
+    BUNDLE_IGNORE_RUBY_VERSION=true rvmsudo bundle install --jobs=4 --retry=3 && \
     chown -R coder:coder $GEM_HOME && \
     rm -rf /tmp/gem-cache
-
-RUN rvmsudo bundle install
-
-RUN rvm install "ruby-3.4.7"
 
 USER coder
