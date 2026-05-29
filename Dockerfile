@@ -37,7 +37,7 @@ RUN mkdir -p $GEM_HOME /home/coder/.npm-global && \
 RUN mkdir -p /workspaces && chown coder:coder /workspaces
 
 USER coder
-RUN npm install -g yarn
+RUN npm install -g yarn opencode
 
 WORKDIR /workspaces
 
