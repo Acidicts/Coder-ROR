@@ -39,7 +39,8 @@ RUN mkdir -p /workspaces && chown coder:coder /workspaces
 USER coder
 RUN npm install -g yarn 
 RUN npm install -g "opencode-ai"
-RUN gem install ruby-lsp --install-dir /usr/local/rvm/gems/ruby-3.4.7 && \
+RUN sudo chown -R coder:coder /usr/local/rvm/gems/ruby-3.4.7 && \
+    gem install ruby-lsp --install-dir /usr/local/rvm/gems/ruby-3.4.7 && \
     gem install bundler -v '~> 2.7' --install-dir /usr/local/rvm/gems/ruby-3.4.7
 
 WORKDIR /workspaces
