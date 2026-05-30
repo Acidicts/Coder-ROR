@@ -66,6 +66,6 @@ RUN echo 'export GEM_HOME=/usr/local/bundle' >> ~/.bashrc && \
     echo 'export BUNDLE_PATH=$GEM_HOME' >> ~/.bashrc && \
     echo 'export BUNDLE_USER_CACHE=$GEM_HOME/cache' >> ~/.bashrc
 
-RUN sudo /usr/local/rvm/bin/rvm 3.4.7 do gem install ruby-lsp
+RUN gem install ruby-lsp
 
 WORKDIR /workspaces
