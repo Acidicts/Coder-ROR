@@ -38,7 +38,7 @@ RUN mkdir -p /workspaces && chown coder:coder /workspaces
 
 USER coder
 RUN npm install -g yarn 
-RUN npm i -g opencode-ai
+RUN npm install -g "opencode-ai"
 
 WORKDIR /workspaces
 
