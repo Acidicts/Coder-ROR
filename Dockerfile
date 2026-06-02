@@ -39,11 +39,21 @@ RUN mkdir -p /workspaces && chown coder:coder /workspaces
 USER coder
 RUN npm install -g yarn 
 RUN npm install -g "opencode-ai"
-RUN sudo chown -R coder:coder /usr/local/rvm/gems/ruby-3.4.7 && \
+
+# --- OPTION 2 IMPLEMENTATION ---
+# Temporarily drop back to root to bypass the QEMU sudo bug
+USER root
+RUN chown -R coder:coder /usr/local/rvm/gems/ruby-3.4.7 && \
     gem install ruby-lsp --install-dir /usr/local/rvm/gems/ruby-3.4.7 && \
     gem install bundler -v '~> 2.7' --install-dir /usr/local/rvm/gems/ruby-3.4.7
 
+# Return to user coder context
+USER coder
+# -------------------------------
+
 WORKDIR /workspaces
+
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 RUN git clone --depth=1 https://github.com/hackclub/hcb.git /workspaces && \
     cd /workspaces && bundle install --jobs=4 --retry=3 && \
@@ -55,7 +65,7 @@ RUN chown -R coder:coder /usr/local/rvm/rubies 2>/dev/null; \
     chown -R coder:coder /usr/local/rvm/gems 2>/dev/null || true
 ENV BUNDLE_USER_CACHE=/usr/local/bundle/cache
 
-RUN find /etc/postgresql -name pg_hba.conf -type f -exec sh -c 'sed -i "s|^host.*127.0.0.1/32.*scram-sha-256|host    all             all             127.0.0.1/32            trust|" "$1"; sed -i "s|^host.*::1/128.*scram-sha-256|host    all             all             ::1/128                 trust|" "$1"' _ {} \; 2>/dev/null; \
+RUN find /etc/postgresql -name pg_hba.conf -type f -exec sh -c 'sed -i "s|^host.*127.0.0.1/32.*scram-sha-256|host    all             all             127.0.0.1/32    trust|" "$1"; sed -i "s|^host.*::1/128.*scram-sha-256|host    all             all             ::1/128                 trust|" "$1"' _ {} \; 2>/dev/null; \
     PG_VER=$(pg_lsclusters -h 2>/dev/null | head -1 | awk '{print $1}') && \
     PG_CLUSTER=$(pg_lsclusters -h 2>/dev/null | head -1 | awk '{print $2}') && \
     if [ -n "$PG_VER" ] && [ -n "$PG_CLUSTER" ]; then \
