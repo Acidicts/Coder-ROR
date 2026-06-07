@@ -29,7 +29,9 @@ ENV GEM_HOME=/usr/local/bundle
 ENV BUNDLE_PATH=$GEM_HOME
 ENV BUNDLE_BIN=$GEM_HOME/bin
 ENV NPM_CONFIG_PREFIX=/home/coder/.npm-global
-ENV PATH=$BUNDLE_BIN:/home/coder/.npm-global/bin:$PATH
+ENV RUBY_HOME=/usr/local/rvm/rubies/ruby-3.4.7
+ENV RVM_GEMS=/usr/local/rvm/gems/ruby-3.4.7
+ENV PATH=$RUBY_HOME/bin:$RVM_GEMS/bin:$BUNDLE_BIN:/home/coder/.npm-global/bin:/usr/local/rvm/bin:$PATH
 
 RUN mkdir -p $GEM_HOME /home/coder/.npm-global && \
     chown -R coder:coder $GEM_HOME /home/coder/.npm-global
