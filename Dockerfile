@@ -52,10 +52,12 @@ USER coder
 
 WORKDIR /workspaces
 
-USER root
-RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
-    chown -R coder:coder /home/linuxbrew/.linuxbrew
-USER coder
+RUN mkdir -p /home/coder/.linuxbrew && \
+    git clone --depth=1 https://github.com/Homebrew/brew /home/coder/.linuxbrew/Homebrew && \
+    mkdir -p /home/coder/.linuxbrew/bin && \
+    ln -sfn /home/coder/.linuxbrew/Homebrew/bin/brew /home/coder/.linuxbrew/bin/brew && \
+    eval "$(/home/coder/.linuxbrew/bin/brew shellenv)" && \
+    brew update && brew upgrade
 
 RUN git clone --depth=1 https://github.com/hackclub/hcb.git /workspaces && \
     cd /workspaces && bundle install --jobs=4 --retry=3 && \
