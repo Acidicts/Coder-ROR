@@ -55,8 +55,8 @@ RUN mkdir -p /usr/share/fonts/truetype/jetbrains-nf && \
     rm -f /tmp/jb_mono.zip && \
     fc-cache -fv
 
-# Install Rails and Bundler with no docs to keep image lean
-RUN gem install rails bundler --no-document
+# Install Rails, Bundler, and Ruby LSP with no docs to keep image lean
+RUN gem install rails bundler ruby-lsp --no-document
 
 # ==============================================================================
 # PRE-BAKE GEMS INTO THE IMAGE LAYER (Optimized for PostgreSQL)
