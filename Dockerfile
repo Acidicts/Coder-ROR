@@ -9,10 +9,12 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /etc/apt/sources.list.d/yarn.list.bak
 
 # Install system dependencies, database libraries, fontconfig, unzip & pipx
+# Note: Added gnupg here so we can safely add external repository keys
 RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
     curl \
     git \
+    gnupg \
     build-essential \
     libssl-dev \
     libreadline-dev \
@@ -24,6 +26,19 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     redis-tools \
     pipx \
     && rm -rf /var/lib/apt/lists/*
+
+# ==============================================================================
+# INSTALL NODE.JS & YARN (Required for Rails Assets Synchronization)
+# ==============================================================================
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends nodejs yarn && \
+    rm -rf /var/lib/apt/lists/*
+# ==============================================================================
 
 # Configure pipx to install globally so the vscode user has execution rights
 ENV PIPX_HOME=/opt/pipx
@@ -60,12 +75,14 @@ ENV PATH="./bin:$PATH"
 # Install opencode CLI
 RUN curl -fsSL https://opencode.ai/install | bash
 
-# Smoke test — added wakatime validation to guarantee global availability
+# Smoke test — added node, yarn, and wakatime validation
 RUN rails --version && \
     ruby --version && \
     bundler --version && \
     starship --version && \
-    wakatime --version
+    wakatime --version && \
+    node --version && \
+    yarn --version
 
 # Drop back down to the non-root user for runtime safety
 USER vscode
