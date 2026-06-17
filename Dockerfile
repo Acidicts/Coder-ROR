@@ -65,15 +65,6 @@ RUN gem install rails ruby-lsp --no-document && \
 
 # ==============================================================================
 # PRE-BAKE GEMS INTO A FIXED, KNOWN BUNDLE PATH
-#
-# FIX: Previously, bundle install ran without an explicit path, so gems landed
-# in an ambiguous location. At runtime the startup script then set `system true`
-# and nuked .bundle/config, causing bundler to be unable to find the pre-baked
-# gems and falling back to a full reinstall.
-#
-# We now pin BUNDLE_PATH to /usr/local/bundle at build time AND export it as an
-# ENV so all subsequent bundler invocations (both in the image and at runtime)
-# resolve gems from the exact same location.
 # ==============================================================================
 ENV BUNDLE_PATH=/usr/local/bundle
 ENV BUNDLE_BIN=/usr/local/bundle/bin
@@ -83,21 +74,11 @@ RUN mkdir /tmp/hcb && cd /tmp/hcb && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
     echo "3.4.9" > .ruby-version && \
-    bundle config set --local frozen false && \
-    bundle config set --local path "${BUNDLE_PATH}" && \
-    bundle install --jobs=4 --retry=3 && \
-    # FIX: Remove the local .bundle/config that was written into /tmp/hcb.
-    # Without this, bundler bakes the absolute path /tmp/hcb/Gemfile into the
-    # global bundle state. Any subsequent invocation of a bundled executable
-    # (e.g. `rails --version`) from a different directory will then fail with
-    # "Gemfile not found" because it tries to load that stale path.
-    # Clearing local config here leaves only the global BUNDLE_PATH ENV intact,
-    # which is all the runtime needs to find the pre-installed gems.
-    rm -rf /tmp/hcb/.bundle && \
+    # Use explicit flags instead of mutable config files
+    bundle install --path="${BUNDLE_PATH}" --jobs=4 --retry=3 && \
     chmod -R 755 "${BUNDLE_PATH}" && \
     cd /tmp && \
     rm -rf /tmp/hcb
-# ==============================================================================
 
 # Symlink ruby-lsp into /usr/local/bin so it is always on PATH
 RUN ln -sf "${BUNDLE_BIN}/ruby-lsp" /usr/local/bin/ruby-lsp || true
@@ -109,12 +90,9 @@ ENV PATH="${BUNDLE_BIN}:/usr/local/bin:$PATH"
 RUN curl -fsSL https://opencode.ai/install | bash
 
 # Smoke test — verify all key tools are present.
-# FIX: Unset BUNDLE_GEMFILE so bundler does not attempt to locate any Gemfile
-# during the version check. We are only verifying the executables exist, not
-# loading a Rails app, so no Gemfile context should be active.
-RUN unset BUNDLE_GEMFILE && \
-    unset BUNDLE_PATH && \
-    rails --version && \
+# Setting BUNDLE_GEMFILE to /dev/null forces Bundler to run in global/isolated mode
+# without looking for a real Gemfile.
+RUN BUNDLE_GEMFILE=/dev/null rails --version && \
     ruby --version && \
     bundler --version && \
     starship --version && \
