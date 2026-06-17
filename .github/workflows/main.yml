@@ -51,7 +51,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             # Tag every main-branch push as :latest
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest
             # Also tag with the short commit SHA for pinning (e.g. :sha-a1b2c3d)
             type=sha,prefix=sha-,format=short
             # Tag with YYYY-MM-DD for date-based pinning (e.g. :2025-06-01)
