@@ -61,11 +61,13 @@ RUN gem install rails bundler ruby-lsp --no-document
 # ==============================================================================
 # PRE-BAKE GEMS INTO THE IMAGE LAYER (Optimized for HCB Repository)
 # ==============================================================================
-RUN git clone --depth 1 https://github.com/hackclub/hcb.git /tmp/hcb && \
-    cd /tmp/hcb && \
+RUN mkdir /tmp/hcb && cd /tmp/hcb && \
+    curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
+    curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
     bundle install && \
     cd /tmp && \
     rm -rf /tmp/hcb
+# ==============================================================================
 # ==============================================================================
 
 # Ensure relative ./bin directory is checked first for executables
