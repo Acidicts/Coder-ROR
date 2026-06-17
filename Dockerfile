@@ -1,4 +1,4 @@
-FROM ghcr.io/acidicts/ruby-base-3.4.7
+FROM ghcr.io/acidicts/ruby-base-3.4.9
 
 # Elevate privileges to root so apt-get has permission to run
 USER root
