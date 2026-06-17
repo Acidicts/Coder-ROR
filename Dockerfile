@@ -67,7 +67,7 @@ RUN mkdir /tmp/hcb && cd /tmp/hcb && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
     echo "3.4.9" > .ruby-version && \
     bundle config set --local frozen false && \
-    bundle install --no-deployment || bundle install
+    (bundle install --no-deployment || bundle install) && \
     cd /tmp && \
     rm -rf /tmp/hcb
 # ==============================================================================
