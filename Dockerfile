@@ -9,7 +9,6 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /etc/apt/sources.list.d/yarn.list.bak
 
 # Install system dependencies, database libraries, fontconfig, unzip & pipx
-# Note: Added gnupg here so we can safely add external repository keys
 RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -25,6 +24,11 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     postgresql-client \
     redis-tools \
     pipx \
+    # --- ADDED FOR POPPLER / GOBJECT NATIVE GEMS ---
+    libgirepository1.0-dev \
+    libpoppler-glib-dev \
+    poppler-utils \
+    # ----------------------------------------------
     && rm -rf /var/lib/apt/lists/*
 
 # ==============================================================================
