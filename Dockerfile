@@ -59,14 +59,13 @@ RUN mkdir -p /usr/share/fonts/truetype/jetbrains-nf && \
 RUN gem install rails bundler ruby-lsp --no-document
 
 # ==============================================================================
-# PRE-BAKE GEMS INTO THE IMAGE LAYER (Optimized for PostgreSQL)
+# PRE-BAKE GEMS INTO THE IMAGE LAYER (Optimized for HCB Repository)
 # ==============================================================================
-RUN cd /tmp && \
-    rails new dummy_app --minimal --database=postgresql --skip-bundle && \
-    cd dummy_app && \
+RUN git clone --depth 1 https://github.com/hackclub/hcb.git /tmp/hcb && \
+    cd /tmp/hcb && \
     bundle install && \
     cd /tmp && \
-    rm -rf dummy_app
+    rm -rf /tmp/hcb
 # ==============================================================================
 
 # Ensure relative ./bin directory is checked first for executables
