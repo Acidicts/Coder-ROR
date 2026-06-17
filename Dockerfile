@@ -83,11 +83,17 @@ RUN mkdir /tmp/hcb && cd /tmp/hcb && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
     echo "3.4.9" > .ruby-version && \
-    # Unfreeze so we can install; the real repo will re-evaluate at runtime
     bundle config set --local frozen false && \
     bundle config set --local path "${BUNDLE_PATH}" && \
     bundle install --jobs=4 --retry=3 && \
-    # Make the bundle path world-readable so the vscode user can use it
+    # FIX: Remove the local .bundle/config that was written into /tmp/hcb.
+    # Without this, bundler bakes the absolute path /tmp/hcb/Gemfile into the
+    # global bundle state. Any subsequent invocation of a bundled executable
+    # (e.g. `rails --version`) from a different directory will then fail with
+    # "Gemfile not found" because it tries to load that stale path.
+    # Clearing local config here leaves only the global BUNDLE_PATH ENV intact,
+    # which is all the runtime needs to find the pre-installed gems.
+    rm -rf /tmp/hcb/.bundle && \
     chmod -R 755 "${BUNDLE_PATH}" && \
     cd /tmp && \
     rm -rf /tmp/hcb
@@ -96,15 +102,19 @@ RUN mkdir /tmp/hcb && cd /tmp/hcb && \
 # Symlink ruby-lsp into /usr/local/bin so it is always on PATH
 RUN ln -sf "${BUNDLE_BIN}/ruby-lsp" /usr/local/bin/ruby-lsp || true
 
-# Ensure relative ./bin directory is checked first for executables, and that
-# the pre-baked bundle bin is always on the system PATH.
-ENV PATH="${BUNDLE_BIN}:./bin:/usr/local/bin:$PATH"
+# Ensure the pre-baked bundle bin is always on the system PATH.
+ENV PATH="${BUNDLE_BIN}:/usr/local/bin:$PATH"
 
 # Install opencode CLI
 RUN curl -fsSL https://opencode.ai/install | bash
 
-# Smoke test — verify all key tools are present
-RUN rails --version && \
+# Smoke test — verify all key tools are present.
+# FIX: Unset BUNDLE_GEMFILE so bundler does not attempt to locate any Gemfile
+# during the version check. We are only verifying the executables exist, not
+# loading a Rails app, so no Gemfile context should be active.
+RUN unset BUNDLE_GEMFILE && \
+    unset BUNDLE_PATH && \
+    rails --version && \
     ruby --version && \
     bundler --version && \
     starship --version && \
