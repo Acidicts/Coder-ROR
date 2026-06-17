@@ -65,12 +65,11 @@ RUN gem install rails ruby-lsp --no-document && \
 RUN mkdir /tmp/hcb && cd /tmp/hcb && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
+    echo "3.4.9" > .ruby-version && \
     bundle config set --local frozen false && \
-    bundle install && \
+    bundle install --no-deployment || bundle install
     cd /tmp && \
     rm -rf /tmp/hcb
-# ==============================================================================
-# ==============================================================================
 # ==============================================================================
 
 # Ensure relative ./bin directory is checked first for executables
