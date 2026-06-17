@@ -65,9 +65,11 @@ RUN gem install rails ruby-lsp --no-document && \
 RUN mkdir /tmp/hcb && cd /tmp/hcb && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
+    bundle config set --local frozen false && \
     bundle install && \
     cd /tmp && \
     rm -rf /tmp/hcb
+# ==============================================================================
 # ==============================================================================
 # ==============================================================================
 
