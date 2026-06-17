@@ -3,7 +3,7 @@ name: Build & Push Ruby Rails Base Image
 on:
   push:
     branches:
-      - main
+      - ruby-3.4.9
     paths:
       # Only rebuild when the Dockerfile itself changes
       - "Dockerfile"
@@ -16,7 +16,7 @@ on:
 env:
   REGISTRY: ghcr.io
   # This will resolve to e.g. ghcr.io/your-org/ruby-rails-base
-  IMAGE_NAME: ${{ github.repository_owner }}/ruby-rails-base
+  IMAGE_NAME: ${{ github.repository_owner }}/ruby-rails-base-3.4.9
 
 jobs:
   build-and-push:
