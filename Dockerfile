@@ -24,11 +24,11 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     postgresql-client \
     redis-tools \
     pipx \
-    # --- ADDED FOR POPPLER / GOBJECT NATIVE GEMS ---
+    # --- REQUIRED FOR POPPLER / GOBJECT NATIVE GEMS ---
     libgirepository1.0-dev \
     libpoppler-glib-dev \
     poppler-utils \
-    # ----------------------------------------------
+    # --------------------------------------------------
     && rm -rf /var/lib/apt/lists/*
 
 # ==============================================================================
@@ -64,25 +64,46 @@ RUN gem install rails ruby-lsp --no-document && \
     gem install bundler -v 2.5.22 --no-document
 
 # ==============================================================================
-# PRE-BAKE GEMS INTO THE IMAGE LAYER (Optimized for HCB Repository)
+# PRE-BAKE GEMS INTO A FIXED, KNOWN BUNDLE PATH
+#
+# FIX: Previously, bundle install ran without an explicit path, so gems landed
+# in an ambiguous location. At runtime the startup script then set `system true`
+# and nuked .bundle/config, causing bundler to be unable to find the pre-baked
+# gems and falling back to a full reinstall.
+#
+# We now pin BUNDLE_PATH to /usr/local/bundle at build time AND export it as an
+# ENV so all subsequent bundler invocations (both in the image and at runtime)
+# resolve gems from the exact same location.
 # ==============================================================================
+ENV BUNDLE_PATH=/usr/local/bundle
+ENV BUNDLE_BIN=/usr/local/bundle/bin
+ENV GEM_HOME=/usr/local/bundle
+
 RUN mkdir /tmp/hcb && cd /tmp/hcb && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile && \
     curl -sLO https://raw.githubusercontent.com/hackclub/hcb/main/Gemfile.lock && \
     echo "3.4.9" > .ruby-version && \
+    # Unfreeze so we can install; the real repo will re-evaluate at runtime
     bundle config set --local frozen false && \
-    (bundle install --no-deployment || bundle install) && \
+    bundle config set --local path "${BUNDLE_PATH}" && \
+    bundle install --jobs=4 --retry=3 && \
+    # Make the bundle path world-readable so the vscode user can use it
+    chmod -R 755 "${BUNDLE_PATH}" && \
     cd /tmp && \
     rm -rf /tmp/hcb
 # ==============================================================================
 
-# Ensure relative ./bin directory is checked first for executables
-ENV PATH="./bin:$PATH"
+# Symlink ruby-lsp into /usr/local/bin so it is always on PATH
+RUN ln -sf "${BUNDLE_BIN}/ruby-lsp" /usr/local/bin/ruby-lsp || true
+
+# Ensure relative ./bin directory is checked first for executables, and that
+# the pre-baked bundle bin is always on the system PATH.
+ENV PATH="${BUNDLE_BIN}:./bin:/usr/local/bin:$PATH"
 
 # Install opencode CLI
 RUN curl -fsSL https://opencode.ai/install | bash
 
-# Smoke test — added node, yarn, and wakatime validation
+# Smoke test — verify all key tools are present
 RUN rails --version && \
     ruby --version && \
     bundler --version && \
