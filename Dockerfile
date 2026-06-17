@@ -90,19 +90,14 @@ ENV PATH="${BUNDLE_BIN}:/usr/local/bin:$PATH"
 RUN curl -fsSL https://opencode.ai/install | bash
 
 # Smoke test — verify all key tools are present.
-# Create a blank temporary Gemfile context so the rails executable stub doesn't crash,
-# while ensuring it doesn't try to resolve real application dependencies.
-RUN mkdir -p /tmp/smoke-test && cd /tmp/smoke-test && \
-    touch Gemfile && \
-    export BUNDLE_GEMFILE=/tmp/smoke-test/Gemfile && \
-    rails --version && \
+# We use `gem exec` to run the global rails binary, ignoring any local Gemfile logic.
+RUN gem exec rails --version && \
     ruby --version && \
     bundler --version && \
     starship --version && \
     wakatime --version && \
     node --version && \
-    yarn --version && \
-    cd /tmp && rm -rf /tmp/smoke-test
+    yarn --version
 
 # Drop back down to the non-root user for runtime safety
 USER vscode
