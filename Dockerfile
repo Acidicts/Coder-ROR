@@ -55,8 +55,9 @@ RUN mkdir -p /usr/share/fonts/truetype/jetbrains-nf && \
     rm -f /tmp/jb_mono.zip && \
     fc-cache -fv
 
-# Install Rails, Bundler, and Ruby LSP with no docs to keep image lean
-RUN gem install rails bundler ruby-lsp --no-document
+# Install Rails, Bundler (matching HCB's lockfile), and Ruby LSP
+RUN gem install rails ruby-lsp --no-document && \
+    gem install bundler -v 2.5.22 --no-document
 
 # ==============================================================================
 # PRE-BAKE GEMS INTO THE IMAGE LAYER (Optimized for HCB Repository)
