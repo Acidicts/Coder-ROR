@@ -86,9 +86,6 @@ RUN ln -sf "${BUNDLE_BIN}/ruby-lsp" /usr/local/bin/ruby-lsp || true
 # Ensure the pre-baked bundle bin is always on the system PATH.
 ENV PATH="${BUNDLE_BIN}:/usr/local/bin:$PATH"
 
-# Install opencode CLI
-RUN curl -fsSL https://opencode.ai/install | bash
-
 # Smoke test — verify all key tools are present.
 # We use `gem exec` to run the global rails binary, ignoring any local Gemfile logic.
 RUN gem exec rails --version && \
@@ -101,3 +98,6 @@ RUN gem exec rails --version && \
 
 # Drop back down to the non-root user for runtime safety
 USER vscode
+
+# Install opencode CLI
+RUN curl -fsSL https://opencode.ai/install | bash
