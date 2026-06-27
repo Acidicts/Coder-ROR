@@ -82,11 +82,12 @@ RUN cd /tmp && \
 # Ensure relative ./bin directory is checked first for executables
 ENV PATH="./bin:$PATH"
 
-USER vscode
-RUN npm install -g yarn 
+# Install global npm packages as root to avoid permission issues
+USER root
 RUN npm install -g "opencode-ai"
 
-# Smoke test — added node, yarn, and wakatime validation
+# Smoke test — validation
+# (Note: yarn is already installed from the apt-get step)
 RUN rails --version && \
     ruby --version && \
     bundler --version && \
