@@ -32,13 +32,21 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
 # ==============================================================================
 RUN mkdir -p /etc/apt/keyrings && \
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
     curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
     echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends nodejs yarn && \
     rm -rf /var/lib/apt/lists/*
 # ==============================================================================
+
+ENV GEM_HOME=/usr/local/bundle
+ENV BUNDLE_PATH=$GEM_HOME
+ENV BUNDLE_BIN=$GEM_HOME/bin
+ENV NPM_CONFIG_PREFIX=/home/coder/.npm-global
+ENV RUBY_HOME=/usr/local/rvm/rubies/ruby-3.4.7
+ENV RVM_GEMS=/usr/local/rvm/gems/ruby-3.4.7
+ENV PATH=$RUBY_HOME/bin:$RVM_GEMS/bin:$BUNDLE_BIN:/home/coder/.npm-global/bin:/usr/local/rvm/bin:$PATH
 
 # Configure pipx to install globally so the vscode user has execution rights
 ENV PIPX_HOME=/opt/pipx
@@ -56,7 +64,9 @@ RUN mkdir -p /usr/share/fonts/truetype/jetbrains-nf && \
     fc-cache -fv
 
 # Install Rails, Bundler, and Ruby LSP with no docs to keep image lean
-RUN gem install rails bundler ruby-lsp --no-document
+USER root
+RUN gem install ruby-lsp && \
+    gem install bundler -v '~> 2.7'
 
 # ==============================================================================
 # PRE-BAKE GEMS INTO THE IMAGE LAYER (Optimized for PostgreSQL)
@@ -72,8 +82,9 @@ RUN cd /tmp && \
 # Ensure relative ./bin directory is checked first for executables
 ENV PATH="./bin:$PATH"
 
-# Install opencode CLI
-RUN curl -fsSL https://opencode.ai/install | bash
+USER vscode
+RUN npm install -g yarn 
+RUN npm install -g "opencode-ai"
 
 # Smoke test — added node, yarn, and wakatime validation
 RUN rails --version && \
