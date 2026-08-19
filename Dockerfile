@@ -22,6 +22,7 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     fontconfig \
     unzip \
     libpq-dev \
+    libvips \
     postgresql-client \
     redis-tools \
     pipx \
