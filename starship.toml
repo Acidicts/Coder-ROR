@@ -179,8 +179,9 @@ disabled = false
 command = "wakatime --today | sed 's/.*up \\([^,]*\\),.*/\\1/' | awk '{ if ($0==\"Start coding to track your time\" || $0==\"\") print \"0\"; else print }'"
 when = "true"
 shell = ["bash", "--noprofile", "--norc"]
+ignore_timeout = true
 style = "bg:purple"
-format = '[[   $output ](fg:mantle bg:purple)]($style)'
+format = '[[   $output ](fg:mantle bg:purple)]($style)'
 
 
 [line_break]
