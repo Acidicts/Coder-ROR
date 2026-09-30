@@ -9,6 +9,7 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /etc/apt/sources.list.d/yarn.list.bak
 
 # Install system dependencies, database libraries, fontconfig, unzip & pipx
+# Note: Added gnupg here so we can safely add external repository keys
 RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -29,28 +30,24 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
 
 # ==============================================================================
 # INSTALL NODE.JS & YARN (Required for Rails Assets Synchronization)
-# Uses keyring files instead of the deprecated `apt-key add`
 # ==============================================================================
 RUN mkdir -p /etc/apt/keyrings && \
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list && \
-    curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /etc/apt/keyrings/yarn.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends nodejs yarn && \
     rm -rf /var/lib/apt/lists/*
-
-# Global npm packages (installed BEFORE NPM_CONFIG_PREFIX is set, so they land
-# in the system prefix and are on PATH for every user)
-RUN npm install -g "opencode-ai"
+# ==============================================================================
 
 ENV GEM_HOME=/usr/local/bundle
 ENV BUNDLE_PATH=$GEM_HOME
 ENV BUNDLE_BIN=$GEM_HOME/bin
-ENV NPM_CONFIG_PREFIX=/home/vscode/.npm-global
+ENV NPM_CONFIG_PREFIX=/home/coder/.npm-global
 ENV RUBY_HOME=/usr/local/rvm/rubies/ruby-3.4.7
 ENV RVM_GEMS=/usr/local/rvm/gems/ruby-3.4.7
-ENV PATH=$RUBY_HOME/bin:$RVM_GEMS/bin:$BUNDLE_BIN:/home/vscode/.npm-global/bin:/usr/local/rvm/bin:$PATH
+ENV PATH=$RUBY_HOME/bin:$RVM_GEMS/bin:$BUNDLE_BIN:/home/coder/.npm-global/bin:/usr/local/rvm/bin:$PATH
 
 # Configure pipx to install globally so the vscode user has execution rights
 ENV PIPX_HOME=/opt/pipx
@@ -62,14 +59,15 @@ RUN curl -sS https://starship.rs/install.sh | sh -s -- -y
 
 # Download and install JetBrainsMono Nerd Font system-wide
 RUN mkdir -p /usr/share/fonts/truetype/jetbrains-nf && \
-    curl -fL -o /tmp/jb_mono.zip https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip && \
+    curl -L -o /tmp/jb_mono.zip https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip && \
     unzip -o /tmp/jb_mono.zip -d /usr/share/fonts/truetype/jetbrains-nf/ && \
     rm -f /tmp/jb_mono.zip && \
     fc-cache -fv
 
-# Install Ruby LSP and Bundler (no docs: much faster)
-RUN gem install ruby-lsp --no-document && \
-    gem install bundler -v '~> 2.7' --no-document
+# Install Rails, Bundler, and Ruby LSP with no docs to keep image lean
+USER root
+RUN gem install ruby-lsp && \
+    gem install bundler -v '~> 2.7'
 
 # ==============================================================================
 # PRE-BAKE GEMS INTO THE IMAGE LAYER (Optimized for PostgreSQL)
@@ -77,18 +75,20 @@ RUN gem install ruby-lsp --no-document && \
 RUN cd /tmp && \
     rails new dummy_app --minimal --database=postgresql --skip-bundle && \
     cd dummy_app && \
-    bundle install --jobs="$(nproc)" && \
+    bundle install && \
     cd /tmp && \
     rm -rf dummy_app
-
-# The gem directory must be writable by the runtime user (removes the slow
-# `chown -R /usr/local/bundle` from every workspace start)
-RUN chown -R vscode:vscode /usr/local/bundle
+# ==============================================================================
 
 # Ensure relative ./bin directory is checked first for executables
 ENV PATH="./bin:$PATH"
 
-# Smoke test: validation
+# Install global npm packages as root to avoid permission issues
+USER root
+RUN npm install -g "opencode-ai"
+
+# Smoke test — validation
+# (Note: yarn is already installed from the apt-get step)
 RUN rails --version && \
     ruby --version && \
     bundler --version && \
@@ -97,31 +97,5 @@ RUN rails --version && \
     node --version && \
     yarn --version
 
-# ==============================================================================
-# CODE-SERVER (baked in; the template module uses use_cached = true)
-# The prefix MUST stay /tmp/code-server: the Coder module hardcodes that path.
-# ==============================================================================
-RUN curl -fsSL https://code-server.dev/install.sh | sh -s -- --method=standalone --prefix=/tmp/code-server && \
-    chown -R vscode:vscode /tmp/code-server
-
-# Install extensions as the runtime user so they land in its home directory.
-# Each step is non-fatal; the template has fallbacks for anything that fails here.
-USER vscode
-RUN CS=/tmp/code-server/bin/code-server; \
-    for ext in \
-      esbenp.prettier-vscode \
-      yusifaliyevpro.vscicons \
-      ritwickdey.LiveServer \
-      WakaTime.vscode-wakatime \
-      sst-dev.opencode \
-      Shopify.ruby-lsp; do \
-        "$CS" --install-extension "$ext" || echo "WARN: failed to install $ext"; \
-    done; \
-    curl -fL --retry 3 --connect-timeout 15 -o /tmp/commit-ai-0.1.0.vsix \
-      https://github.com/Acidicts/Coder-ROR/releases/download/ai/commit-ai-0.1.0.vsix \
-      && "$CS" --install-extension /tmp/commit-ai-0.1.0.vsix \
-      || echo "WARN: custom commit-ai VSIX not baked; the template script will install it at start"; \
-    rm -f /tmp/commit-ai-0.1.0.vsix
-
-# Runtime user stays non-root
+# Drop back down to the non-root user for runtime safety
 USER vscode
