@@ -26,6 +26,7 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     postgresql-client \
     redis-tools \
     pipx \
+    gh \
     && rm -rf /var/lib/apt/lists/*
 
 # ==============================================================================
