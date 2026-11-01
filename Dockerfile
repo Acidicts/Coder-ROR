@@ -26,8 +26,11 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     postgresql-client \
     redis-tools \
     pipx \
-    gh \
     && rm -rf /var/lib/apt/lists/*
+
+RUN apy install -y \ 
+    gh \
+    zip
 
 # ==============================================================================
 # INSTALL NODE.JS & YARN (Required for Rails Assets Synchronization)
