@@ -8,8 +8,7 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
           /usr/share/keyrings/yarnkey.gpg \
           /etc/apt/sources.list.d/yarn.list.bak
 
-# Install system dependencies, database libraries, fontconfig, unzip & pipx
-# Note: Added gnupg here so we can safely add external repository keys
+# Install system dependencies, database libraries, fontconfig, unzip, pipx, gh & zip
 RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -21,6 +20,8 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     zlib1g-dev \
     fontconfig \
     unzip \
+    zip \
+    gh \
     libpq-dev \
     libvips \
     postgresql-client \
@@ -28,18 +29,14 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false --allow-releaseinfo-chang
     pipx \
     && rm -rf /var/lib/apt/lists/*
 
-RUN apy install -y \ 
-    gh \
-    zip
-
 # ==============================================================================
 # INSTALL NODE.JS & YARN (Required for Rails Assets Synchronization)
 # ==============================================================================
 RUN mkdir -p /etc/apt/keyrings && \
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
-    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list && \
+    curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /etc/apt/keyrings/yarn.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends nodejs yarn && \
     rm -rf /var/lib/apt/lists/*
@@ -69,9 +66,8 @@ RUN mkdir -p /usr/share/fonts/truetype/jetbrains-nf && \
     fc-cache -fv
 
 # Install Rails, Bundler, and Ruby LSP with no docs to keep image lean
-USER root
-RUN gem install ruby-lsp && \
-    gem install bundler -v '~> 2.7'
+RUN gem install --no-document rails ruby-lsp && \
+    gem install --no-document bundler -v '~> 2.7'
 
 # ==============================================================================
 # PRE-BAKE GEMS INTO THE IMAGE LAYER (Optimized for PostgreSQL)
@@ -88,11 +84,9 @@ RUN cd /tmp && \
 ENV PATH="./bin:$PATH"
 
 # Install global npm packages as root to avoid permission issues
-USER root
 RUN npm install -g "opencode-ai"
 
 # Smoke test — validation
-# (Note: yarn is already installed from the apt-get step)
 RUN rails --version && \
     ruby --version && \
     bundler --version && \
