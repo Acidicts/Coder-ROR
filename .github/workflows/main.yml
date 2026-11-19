@@ -3,7 +3,7 @@ name: Build & Push Ruby Rails Base Image
 on:
   push:
     branches:
-      - ruby-4.0.7
+      - ruby-4.0.10
   schedule:
     # Rebuild weekly (Mondays at 02:00 UTC) to pick up upstream security patches
     - cron: "0 2 * * 1"
