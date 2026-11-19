@@ -1,4 +1,4 @@
-FROM ghcr.io/acidicts/ruby-base-4.0.7
+FROM ghcr.io/acidicts/ruby-base-4.0.10
 
 # Elevate privileges to root so apt-get has permission to run
 USER root
@@ -46,8 +46,8 @@ ENV GEM_HOME=/usr/local/bundle
 ENV BUNDLE_PATH=$GEM_HOME
 ENV BUNDLE_BIN=$GEM_HOME/bin
 ENV NPM_CONFIG_PREFIX=/home/coder/.npm-global
-ENV RUBY_HOME=/usr/local/rvm/rubies/ruby-4.0.7
-ENV RVM_GEMS=/usr/local/rvm/gems/ruby-4.0.7
+ENV RUBY_HOME=/usr/local/rvm/rubies/ruby-4.0.10
+ENV RVM_GEMS=/usr/local/rvm/gems/ruby-4.0.10
 ENV PATH=$RUBY_HOME/bin:$RVM_GEMS/bin:$BUNDLE_BIN:/home/coder/.npm-global/bin:/usr/local/rvm/bin:$PATH
 
 # Configure pipx to install globally so the vscode user has execution rights
